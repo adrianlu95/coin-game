@@ -8,15 +8,15 @@
  */
 
 const { clamp, randomPoint, permutation } = require('./gameutil');
-const redis = require('redis').createClient();
+const redis = require('redis').createClient({host: 'localhost', port: 6379, db: 0})
 
 const WIDTH = 64;
 const HEIGHT = 64;
 const MAX_PLAYER_NAME_LENGTH = 32;
 const NUM_COINS = 100;
 
-redis.on("error", function (error) {
-  console.error(`Error: ${error}`);
+redis.on('error', error => {
+  console.error(error);
 });
 
 // A KEY-VALUE "DATABASE" FOR THE GAME STATE.
@@ -45,11 +45,14 @@ exports.addPlayer = (name) => {
     return false;
   }
   redis.sadd('usednames', name);
-  //database.usednames.add(name);
+  database.usednames.add(name);
+
   redis.set(`player:${name}`, randomPoint(WIDTH, HEIGHT).toString());
-  //database[`player:${name}`] = randomPoint(WIDTH, HEIGHT).toString();
+  database[`player:${name}`] = randomPoint(WIDTH, HEIGHT).toString();
+
   redis.zadd('scores', [name, 0]);
-  //database.scores[name] = 0;
+  database.scores[name] = 0;
+
   return true;
 };
 
@@ -97,8 +100,9 @@ exports.move = (direction, name) => {
     }
   }
 };
-redis.on('error', (err) => {
-  console.error(`Error: ${err}`)
+
+redis.on('error', error => {
+  console.error(error);
 });
 
 placeCoins();
