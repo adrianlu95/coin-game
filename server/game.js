@@ -50,7 +50,7 @@ exports.addPlayer = (name) => {
   redis.set(`player:${name}`, randomPoint(WIDTH, HEIGHT).toString());
   database[`player:${name}`] = randomPoint(WIDTH, HEIGHT).toString();
 
-  redis.zadd('scores', [name, 0]);
+  redis.zadd('scores', 0, name);
   database.scores[name] = 0;
 
   return true;
@@ -60,6 +60,7 @@ function placeCoins() {
   permutation(WIDTH * HEIGHT).slice(0, NUM_COINS).forEach((position, i) => {
     const coinValue = (i < 50) ? 1 : (i < 75) ? 2 : (i < 95) ? 5 : 10;
     const index = `${Math.floor(position / WIDTH)},${Math.floor(position % WIDTH)}`;
+    redis.lpush('coins', [index])
     database.coins[index] = coinValue;
   });
 }
@@ -90,6 +91,7 @@ exports.move = (direction, name) => {
     const value = database.coins[`${newX},${newY}`];
     if (value) {
       database.scores[name] += value;
+      redis.lrem('coins', 1, `${newX},${newY}`);
       delete database.coins[`${newX},${newY}`];
     }
     database[playerKey] = `${newX},${newY}`;
