@@ -13,7 +13,7 @@ const redis = require('redis').createClient({host: 'localhost', port: 6379, db: 
 const WIDTH = 64;
 const HEIGHT = 64;
 const MAX_PLAYER_NAME_LENGTH = 32;
-const NUM_COINS = 100;
+const NUM_COINS = 10;
 
 redis.on('error', error => {
   console.error(error);
@@ -90,6 +90,8 @@ exports.move = (direction, name) => {
     const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
     const value = database.coins[`${newX},${newY}`];
     if (value) {
+      redis.zrange('scores', )
+      redis.zadd('scores', 'XX', 'CH', )
       database.scores[name] += value;
       redis.lrem('coins', 1, `${newX},${newY}`);
       delete database.coins[`${newX},${newY}`];
@@ -97,6 +99,9 @@ exports.move = (direction, name) => {
     database[playerKey] = `${newX},${newY}`;
 
     // When all coins collected, generate a new batch.
+    if (redis.lrange('coins', 0, -1).length === 0) {
+      placeCoins();
+    }
     if (Object.keys(database.coins).length === 0) {
       placeCoins();
     }
