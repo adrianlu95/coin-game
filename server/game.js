@@ -91,11 +91,11 @@ exports.move = (direction, name) => {
     const value = database.coins[`${newX},${newY}`];
     if (value) {
       redis.zincrby('scores', value, name);
-      redis.zadd('scores', 'XX', 'CH', )
       database.scores[name] += value;
       redis.lrem('coins', 1, `${newX},${newY}`);
       delete database.coins[`${newX},${newY}`];
     }
+    redis.set(playerKey, `${newX},${newY}`);
     database[playerKey] = `${newX},${newY}`;
 
     // When all coins collected, generate a new batch.
