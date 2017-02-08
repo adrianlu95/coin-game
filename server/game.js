@@ -90,7 +90,7 @@ exports.move = (direction, name) => {
     const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
     const value = database.coins[`${newX},${newY}`];
     if (value) {
-      redis.zrange('scores', )
+      redis.zincrby('scores', value, name);
       redis.zadd('scores', 'XX', 'CH', )
       database.scores[name] += value;
       redis.lrem('coins', 1, `${newX},${newY}`);
