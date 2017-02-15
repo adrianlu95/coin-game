@@ -62,7 +62,7 @@ function placeCoins() {
   permutation(WIDTH * HEIGHT).slice(0, NUM_COINS).forEach((position, i) => {
     const coinValue = (i < 50) ? 1 : (i < 75) ? 2 : (i < 95) ? 5 : 10;
     const index = `${Math.floor(position / WIDTH)},${Math.floor(position % WIDTH)}`;
-    redis.lpush('coins', [index])
+    redis.hset('coins', index, coinValue);
     database.coins[index] = coinValue;
   });
 }
@@ -92,32 +92,30 @@ exports.move = (direction, name) => {
     // const [x, y] = database[playerKey].split(',');
     // const value = database.coins[`${newX},${newY}`];
 
-    return redis.multi()
-      .get(playerKey)
-      .lrange('coins', 0, -1).execAsync().then(function(resolve) {
-        const [x, y] = resolve[0].split(',');
-        const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
-        const value = resolve[1];
-        console.log(value[1].includes(`${newX},${newY}`));
+    return redis.getAsync(playerKey).then(function(resolve, reject) {
+      const [x, y] = resolve.split(',');
+      const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
+
+      return redis.multi()
+        .hget('coins', `${newX},${newY}`)
+        .hgetall('coins').execAsync().then(function(resolve, reject) {
+
+          const value = resolve[0];
+          if (value) {
+            redis.zincrby('scores', value, name, function (e,r) {});
+            database.scores[name] += value;
+            redis.hdel('coins', `${newX},${newY}`, function (e,r) {});
+            delete database.coins[`${newX},${newY}`];
+          }
+          redis.set(playerKey, `${newX},${newY}`, function (e,r) {});
+          database[playerKey] = `${newX},${newY}`;
+
+          if (Object.keys(resolve[1]).length === 0) {
+            placeCoins();
+          }
+          console.log(Object.keys(resolve[1]).length);
+      });
     });
-      
-    if (value) {
-      redis.zincrby('scores', value, name);
-      database.scores[name] += value;
-      redis.lrem('coins', 1, `${newX},${newY}`);
-      delete database.coins[`${newX},${newY}`];
-    }
-    redis.set(playerKey, `${newX},${newY}`);
-    database[playerKey] = `${newX},${newY}`;
-
-    // When all coins collected, generate a new batch.
-    if (redis.lrange('coins', 0, -1).length === 0) {
-      placeCoins();
-    }
-    if (Object.keys(database.coins).length === 0) {
-      placeCoins();
-    }
-
   }
 };
 
