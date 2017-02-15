@@ -49,8 +49,9 @@ exports.addPlayer = (name) => {
   redis.sadd('usednames', name);
   database.usednames.add(name);
 
-  redis.set(`player:${name}`, randomPoint(WIDTH, HEIGHT).toString());
-  database[`player:${name}`] = randomPoint(WIDTH, HEIGHT).toString();
+  point = randomPoint(WIDTH, HEIGHT).toString();
+  redis.set(`player:${name}`, point);
+  database[`player:${name}`] = point;
 
   redis.zadd('scores', 0, name);
   database.scores[name] = 0;
@@ -77,6 +78,19 @@ exports.state = () => {
     .map(([key, value]) => [key.substring(7), value]);
   const scores = Object.entries(database.scores);
   scores.sort(([, v1], [, v2]) => v2 - v1);
+  redis.multi()
+    .keys('player:*')
+    .zrevrangebyscore('scores', '+inf', '-inf')
+    .hgetall('coins').execAsync().then((res, err) => {
+      const names = res[0].map((key) => key.substring(7));
+      const scores = res[1];
+      const coins = res[2];
+      return redis.mgetAsync(res[0]).then((res, err) => {
+        const pos = res;
+        const positions = names.map((e, i) => { return [e, pos[i]] });
+
+      });
+    });
   return {
     positions,
     scores,
