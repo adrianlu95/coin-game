@@ -8,7 +8,9 @@
  */
 
 const { clamp, randomPoint, permutation } = require('./gameutil');
-const redis = require('redis').createClient({host: 'localhost', port: 6379, db: 0})
+const redis = require('redis').createClient({host: 'localhost', port: 6379, db: 0});
+const Promise = require("bluebird");
+Promise.promisifyAll(require("redis"));
 
 const WIDTH = 64;
 const HEIGHT = 64;
@@ -82,13 +84,23 @@ exports.state = () => {
   };
 };
 
+
 exports.move = (direction, name) => {
   const delta = { U: [0, -1], R: [1, 0], D: [0, 1], L: [-1, 0] }[direction];
   if (delta) {
     const playerKey = `player:${name}`;
-    const [x, y] = database[playerKey].split(',');
-    const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
-    const value = database.coins[`${newX},${newY}`];
+    // const [x, y] = database[playerKey].split(',');
+    // const value = database.coins[`${newX},${newY}`];
+
+    return redis.multi()
+      .get(playerKey)
+      .lrange('coins', 0, -1).execAsync().then(function(resolve) {
+        const [x, y] = resolve[0].split(',');
+        const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
+        const value = resolve[1];
+        console.log(value[1].includes(`${newX},${newY}`));
+    });
+      
     if (value) {
       redis.zincrby('scores', value, name);
       database.scores[name] += value;
@@ -105,6 +117,7 @@ exports.move = (direction, name) => {
     if (Object.keys(database.coins).length === 0) {
       placeCoins();
     }
+
   }
 };
 
