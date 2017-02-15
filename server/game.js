@@ -110,10 +110,9 @@ exports.move = (direction, name) => {
           redis.set(playerKey, `${newX},${newY}`, function (e,r) {});
           database[playerKey] = `${newX},${newY}`;
 
-          if (Object.keys(resolve[1]).length === 0) {
+          if (resolve[1] === null) {
             placeCoins();
           }
-          console.log(Object.keys(resolve[1]).length);
       });
     });
   }
