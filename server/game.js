@@ -97,9 +97,13 @@ exports.state = () => {
     .map(([key, value]) => [key.substring(7), value]);
   const scores = Object.entries(database.scores);
   scores.sort(([, v1], [, v2]) => v2 - v1);
+
   getValues(function(values) {
-    console.log(values);
+    const positions = values[0];
+    const scores = values[1];
+    const coins = values[2];
   });
+
   return {
     positions,
     scores,
