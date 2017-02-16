@@ -68,6 +68,25 @@ function placeCoins() {
   });
 }
 
+function getValues(callback) {
+    redis.multi()
+    .keys('player:*')
+    .zrevrangebyscore('scores', '+inf', '-inf', 'withscores')
+    .hgetall('coins').execAsync().then((res, err) => {
+      const names = res[0].map((key) => key.substring(7));
+      const scores = [];
+      for (let i = 0; i < res[1].length; i += 2) {
+        scores.push([res[1][i], res[1][i+1]]);
+      }
+      const coins = res[2];
+      return redis.mgetAsync(res[0]).then((res, err) => {
+        const pos = res;
+        const positions = names.map((e, i) => { return[e, pos[i]] });
+        callback([positions, scores, coins]);
+      });
+    });
+}
+
 // Return only the parts of the database relevant to the client. The client only cares about
 // the positions of each player, the scores, and the positions (and values) of each coin.
 // Note that we return the scores in sorted order, so the client just has to iteratively
@@ -78,19 +97,9 @@ exports.state = () => {
     .map(([key, value]) => [key.substring(7), value]);
   const scores = Object.entries(database.scores);
   scores.sort(([, v1], [, v2]) => v2 - v1);
-  redis.multi()
-    .keys('player:*')
-    .zrevrangebyscore('scores', '+inf', '-inf')
-    .hgetall('coins').execAsync().then((res, err) => {
-      const names = res[0].map((key) => key.substring(7));
-      const scores = res[1];
-      const coins = res[2];
-      return redis.mgetAsync(res[0]).then((res, err) => {
-        const pos = res;
-        const positions = names.map((e, i) => { return [e, pos[i]] });
-
-      });
-    });
+  getValues(function(values) {
+    console.log(values);
+  });
   return {
     positions,
     scores,
